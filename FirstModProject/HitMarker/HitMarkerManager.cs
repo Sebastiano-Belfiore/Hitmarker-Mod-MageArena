@@ -1,14 +1,10 @@
-﻿using FirstModProject.Core;
-using FirstModProject.Utils;
+﻿using HitMarkerMod.Core;
+using HitMarkerMod.Utils;
 using System;
 using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using UnityEngine;
 
-namespace FirstModProject.HitMarker
+namespace HitMarkerMod.HitMarker
 {
     public class HitMarkerManager : MonoBehaviour
     {
@@ -24,6 +20,7 @@ namespace FirstModProject.HitMarker
             _hitMarkerData = new HitMarkerData();
             _canvasWait = new WaitForSeconds(ModConstants.CANVAS_WAIT_TIME);
         }
+
         public void Initialize(Texture2D texture)
         {
             _hitMarkerTexture = texture;
@@ -34,8 +31,9 @@ namespace FirstModProject.HitMarker
                 return;
             }
 
-            LoggerUtils.LogHitmarker("HitMarkerManager initialized successfully");
+            LoggerUtils.LogInfo("HitMarkerManager", "Manager initialized with texture");
         }
+
         public void InitializeHitmarker()
         {
             if (_hitMarkerTexture == null)
@@ -46,24 +44,33 @@ namespace FirstModProject.HitMarker
 
             StartCoroutine(InitializeHitmarkerCoroutine());
         }
+
         public void ShowHitmarker()
         {
             if (!IsInitialized)
             {
-                LoggerUtils.LogWarning("HitMarkerManager", "Cannot show hitmarker: not initialized");
+                LoggerUtils.LogDebug("HitMarkerManager", "Cannot show hitmarker: not initialized");
                 return;
             }
 
-            _hitMarkerBehaviour.ShowHitMark();
-            LoggerUtils.LogHitmarker("Hitmarker displayed");
+            try
+            {
+                _hitMarkerBehaviour.ShowHitMark();
+                LoggerUtils.LogDebug("HitMarkerManager", "Hitmarker displayed");
+            }
+            catch (Exception ex)
+            {
+                LoggerUtils.LogError("HitMarkerManager", $"Failed to show hitmarker: {ex.Message}");
+            }
         }
+
         private IEnumerator InitializeHitmarkerCoroutine()
         {
-            LoggerUtils.LogHitmarker("Starting canvas search...");
+            LoggerUtils.LogInfo("HitMarkerManager", "Searching for Canvas...");
 
             GameObject canvasObj = null;
             int attempts = 0;
-            const int maxAttempts = 30; // Limite per evitare loop infiniti
+            const int maxAttempts = 15; // Reduced from 30
 
             while (canvasObj == null && attempts < maxAttempts)
             {
@@ -72,7 +79,7 @@ namespace FirstModProject.HitMarker
                 if (canvasObj == null)
                 {
                     attempts++;
-                    LoggerUtils.LogHitmarker($"Canvas not found, waiting... (attempt {attempts}/{maxAttempts})");
+                    LoggerUtils.LogDebug("HitMarkerManager", $"Canvas search attempt {attempts}/{maxAttempts}");
                     yield return _canvasWait;
                 }
             }
@@ -83,18 +90,22 @@ namespace FirstModProject.HitMarker
                 yield break;
             }
 
-            LoggerUtils.LogHitmarker($"Canvas '{canvasObj.name}' found!");
+            LoggerUtils.LogInfo("HitMarkerManager", "Canvas found, creating hitmarker");
             CreateHitmarkerOnCanvas(canvasObj);
         }
+
         private void CreateHitmarkerOnCanvas(GameObject canvas)
         {
             try
             {
+                
                 GameObject hitmarkerObject = new GameObject("HitMarker");
                 hitmarkerObject.transform.SetParent(canvas.transform, false);
 
+                
                 _hitMarkerBehaviour = hitmarkerObject.AddComponent<HitMarkerBehaviour>();
 
+                
                 Sprite hitmarkerSprite = ResourceLoader.CreateSpriteFromTexture(_hitMarkerTexture);
                 if (hitmarkerSprite == null)
                 {
@@ -103,13 +114,14 @@ namespace FirstModProject.HitMarker
                     return;
                 }
 
+                
                 _hitMarkerBehaviour.Initialize(_hitMarkerData, hitmarkerSprite);
 
-                LoggerUtils.LogHitmarker("Hitmarker GameObject created and initialized on Canvas");
+                LoggerUtils.LogInfo("HitMarkerManager", "Hitmarker system ready");
             }
-            catch (System.Exception ex)
+            catch (Exception ex)
             {
-                LoggerUtils.LogError("HitMarkerManager", $"Failed to create hitmarker on canvas: {ex.Message}");
+                LoggerUtils.LogCriticalError("HitMarkerManager", "Failed to create hitmarker on canvas", ex);
             }
         }
     }

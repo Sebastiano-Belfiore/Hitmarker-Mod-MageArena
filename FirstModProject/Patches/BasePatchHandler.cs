@@ -1,13 +1,8 @@
-﻿using FirstModProject.Utils;
-using System;
-using System.Collections.Generic;
+﻿using HitMarkerMod.Utils;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using UnityEngine;
-using static UnityEngine.GraphicsBuffer;
 
-namespace FirstModProject.Patches
+namespace HitMarkerMod.Patches
 {
     public abstract class BasePatchHandler
     {
@@ -16,25 +11,31 @@ namespace FirstModProject.Patches
 
         public virtual bool IsLocalPlayerOwner(GameObject owner)
         {
-            bool b = NetworkUtils.IsLocalPlayerOwner(owner);
-                if(!b) LoggerUtils.LogPatch("TorchHitDetectionPatch", "Torch not owned by local player, skipping");
-            return b;
+            bool isOwner = NetworkUtils.IsLocalPlayerOwner(owner);
+            if (!isOwner)
+            {
+                LoggerUtils.LogDebug(PatchName, "Not owned by local player, skipping");
+            }
+            return isOwner;
         }
+
         public virtual bool IsValidHit(GameObject target)
         {
             if (target == null) return false;
-            bool isValid = ValidTags.Contains(target.tag);
-            return isValid || MoreCheckHit(target);
-            
+
+            bool isValidTag = ValidTags.Contains(target.tag);
+            bool hasMoreChecks = MoreCheckHit(target);
+
+            return isValidTag || hasMoreChecks;
         }
+
         public virtual bool ProcessHit(GameObject target, GameObject owner)
         {
-            /*
-              if (!IsLocalPlayerOwner(owner))
+            if (!IsLocalPlayerOwner(owner))
             {
-                LogPatch("Weapon not owned by local player, skipping");
                 return false;
-            }*/
+            }
+
             if (IsValidHit(target))
             {
                 OnValidHit(target);
@@ -46,29 +47,42 @@ namespace FirstModProject.Patches
                 return false;
             }
         }
+
+        // Metodo astratto per controlli specifici del patch
         public abstract bool MoreCheckHit(GameObject target);
 
-        public virtual void LogPatch(string message)
+        // Metodi di logging semplificati
+        public void LogPatch(string message)
         {
             LoggerUtils.LogPatch(PatchName, message);
         }
 
-        public virtual void LogError(string message)
+        public void LogError(string message)
         {
             LoggerUtils.LogError(PatchName, message);
         }
 
+        public void LogDebug(string message)
+        {
+            LoggerUtils.LogDebug(PatchName, message);
+        }
+
         public virtual void OnValidHit(GameObject target)
         {
-            Mod.Instance.ShowHitmarkerInstance();
-            LoggerUtils.LogHitDetection(PatchName, ColliderUtils.GetTargetInfo(target), true);
+            try
+            {
+                Mod.Instance?.ShowHitmarkerInstance();
+                LoggerUtils.LogHitDetection(PatchName, ColliderUtils.GetTargetInfo(target), true);
+            }
+            catch (System.Exception ex)
+            {
+                LoggerUtils.LogError(PatchName, $"Failed to show hitmarker: {ex.Message}");
+            }
         }
 
         public virtual void OnInvalidHit(GameObject target)
         {
             LoggerUtils.LogHitDetection(PatchName, ColliderUtils.GetTargetInfo(target), false);
         }
-
-
     }
 }

@@ -1,5 +1,5 @@
-﻿using FirstModProject.Patches.WeaponPatches;
-using FirstModProject.Utils;
+﻿
+using HitMarkerMod.Utils;
 using FishNet.Object;
 using HarmonyLib;
 using System;
@@ -10,9 +10,9 @@ using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
 
-namespace FirstModProject.Patches.SpellPatches.LightningBolt
+namespace HitMarkerMod.Patches.SpellPatches.LightningBolt
 {
-    
+    [HarmonyPatch]
     public static class LightningBolt_Patches
     {
         private static LightningHandler patchHandler = new LightningHandler();
@@ -26,25 +26,32 @@ namespace FirstModProject.Patches.SpellPatches.LightningBolt
             {
                 if (!patchHandler.IsLocalPlayerOwner(OwnerObj)) return;
 
+               
                 FieldInfo heightField = typeof(LightningBoltDamage).GetField("height", BindingFlags.NonPublic | BindingFlags.Instance);
                 FieldInfo widthField = typeof(LightningBoltDamage).GetField("width", BindingFlags.NonPublic | BindingFlags.Instance);
+
                 if (heightField == null || widthField == null)
                 {
-                    patchHandler.LogError(" (height or width) Fields not found");
+                    patchHandler.LogError("Required fields not found via reflection");
                     return;
                 }
+
                 float height = (float)heightField.GetValue(__instance);
                 float width = (float)widthField.GetValue(__instance);
+
                 Vector3 center = __instance.transform.position + Vector3.up * (height / 2f);
                 Vector3 halfExtents = new Vector3(width / 2f, height / 2f, width / 2f);
-                foreach (Collider collider in Physics.OverlapBox(center, halfExtents, Quaternion.identity, __instance.lrm))
+
+                Collider[] colliders = Physics.OverlapBox(center, halfExtents, Quaternion.identity, __instance.lrm);
+
+                foreach (Collider collider in colliders)
                 {
-                    patchHandler.ProcessHit(collider.gameObject,OwnerObj);
+                    patchHandler.ProcessHit(collider.gameObject, OwnerObj);
                 }
             }
             catch (Exception ex)
             {
-                patchHandler.LogError($"Error in patch: {ex.Message}");
+                patchHandler.LogError($"Patch error: {ex.Message}");
             }
         }
     }

@@ -1,21 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using HitMarkerMod.Patches;
 using UnityEngine;
 
-namespace FirstModProject.Patches.SpellPatches.Rock
+public class FireballHandler : BasePatchHandler
 {
-    internal class FireballHandler : BasePatchHandler
-    {
-        public override string[] ValidTags => new[] { "Player", "PlayerNpc", "hitable" };
-
-        public override string PatchName => "Fireball";
-
-        public override bool MoreCheckHit(GameObject target)
-        {
-            return false;
-        }
-    }
+    public override string[] ValidTags => new[] { "Player", "PlayerNpc", "hitable" };
+    public override string PatchName => "Fireball";
+    public override bool MoreCheckHit(GameObject target) => false;
 }

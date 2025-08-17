@@ -1,20 +1,16 @@
-﻿using FirstModProject.Utils;
+﻿using HitMarkerMod.Utils;
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 using UnityEngine;
 
-namespace FirstModProject.Core
+namespace HitMarkerMod.Core
 {
     public static class ResourceLoader
     {
         public static Texture2D LoadTextureFromResources(string resourcePath)
         {
-            LoggerUtils.LogResource($"Attempting to load texture from: {resourcePath}");
+            LoggerUtils.LogDebug("ResourceLoader", $"Loading texture: {resourcePath}");
 
             Assembly assembly = Assembly.GetExecutingAssembly();
 
@@ -34,7 +30,7 @@ namespace FirstModProject.Core
 
                     if (bytesRead != buffer.Length)
                     {
-                        LoggerUtils.LogError("ResourceLoader", $"Failed to read complete stream. Expected: {buffer.Length}, Read: {bytesRead}");
+                        LoggerUtils.LogError("ResourceLoader", $"Incomplete stream read. Expected: {buffer.Length}, Read: {bytesRead}");
                         return null;
                     }
 
@@ -42,23 +38,24 @@ namespace FirstModProject.Core
 
                     if (ImageConversion.LoadImage(texture, buffer))
                     {
-                        LoggerUtils.LogResource($"Successfully loaded texture: {resourcePath} ({texture.width}x{texture.height})");
+                        LoggerUtils.LogInfo("ResourceLoader", $"Texture loaded successfully ({texture.width}x{texture.height})");
                         return texture;
                     }
                     else
                     {
-                        LoggerUtils.LogError("ResourceLoader", $"Failed to convert bytes to image for resource: {resourcePath}");
+                        LoggerUtils.LogError("ResourceLoader", "Failed to convert bytes to image");
                         GameObject.Destroy(texture);
                         return null;
                     }
                 }
             }
-            catch (System.Exception ex)
+            catch (Exception ex)
             {
-                LoggerUtils.LogError("ResourceLoader", $"Exception loading resource {resourcePath}: {ex.Message}");
+                LoggerUtils.LogCriticalError("ResourceLoader", $"Exception loading resource {resourcePath}", ex);
                 return null;
             }
         }
+
         public static Sprite CreateSpriteFromTexture(Texture2D texture)
         {
             if (texture == null)
@@ -67,24 +64,42 @@ namespace FirstModProject.Core
                 return null;
             }
 
-            Sprite sprite = Sprite.Create(
-                texture,
-                new Rect(0, 0, texture.width, texture.height),
-                new Vector2(0.5f, 0.5f)
-            );
+            try
+            {
+                Sprite sprite = Sprite.Create(
+                    texture,
+                    new Rect(0, 0, texture.width, texture.height),
+                    new Vector2(0.5f, 0.5f)
+                );
 
-            LoggerUtils.LogResource($"Created sprite from texture ({texture.width}x{texture.height})");
-            return sprite;
+                LoggerUtils.LogDebug("ResourceLoader", $"Sprite created ({texture.width}x{texture.height})");
+                return sprite;
+            }
+            catch (Exception ex)
+            {
+                LoggerUtils.LogError("ResourceLoader", $"Failed to create sprite: {ex.Message}");
+                return null;
+            }
         }
+
         private static void LogAvailableResources()
         {
-            Assembly assembly = Assembly.GetExecutingAssembly();
-            string[] resourceNames = assembly.GetManifestResourceNames();
+            if (LoggerUtils.MinLogLevel > LogLevel.Debug) return;
 
-            LoggerUtils.LogResource($"Available embedded resources ({resourceNames.Length}):");
-            foreach (string resourceName in resourceNames)
+            try
             {
-                LoggerUtils.LogResource($"  - {resourceName}");
+                Assembly assembly = Assembly.GetExecutingAssembly();
+                string[] resourceNames = assembly.GetManifestResourceNames();
+
+                LoggerUtils.LogDebug("ResourceLoader", $"Available embedded resources ({resourceNames.Length}):");
+                foreach (string resourceName in resourceNames)
+                {
+                    LoggerUtils.LogDebug("ResourceLoader", $"  - {resourceName}");
+                }
+            }
+            catch (Exception ex)
+            {
+                LoggerUtils.LogError("ResourceLoader", $"Failed to list resources: {ex.Message}");
             }
         }
     }

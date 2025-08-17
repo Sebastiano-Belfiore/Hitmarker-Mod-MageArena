@@ -1,9 +1,9 @@
-﻿using FirstModProject.Core;
+﻿using HitMarkerMod.Core;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace FirstModProject.HitMarker
+namespace HitMarkerMod.HitMarker
 {
     [System.Serializable]
     public class HitMarkerData

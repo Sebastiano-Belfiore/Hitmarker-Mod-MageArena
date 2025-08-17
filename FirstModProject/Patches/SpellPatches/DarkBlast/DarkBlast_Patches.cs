@@ -1,4 +1,4 @@
-﻿using FirstModProject.Patches.WeaponPatches;
+﻿using HitMarkerMod.Utils;
 using FishNet.Object;
 using HarmonyLib;
 using System;
@@ -9,21 +9,29 @@ using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
 
-namespace FirstModProject.Patches.SpellPatches.DarkBlast
+namespace HitMarkerMod.Patches.SpellPatches.DarkBlast
 {
+    [HarmonyPatch]
     public static class DarkBlast_Patches
     {
 
         private static GameObject owner;
         private static DarkBlastHandler patchHandler = new DarkBlastHandler();
-        [HarmonyPatch("CastDarkBlast")]
+
+        [HarmonyPatch(typeof(DarkBlastController), "CastDarkBlast")]
         [HarmonyPostfix]
         public static void CastDarkBlast_Postfix(DarkBlastController __instance, Vector3 fwdVector, GameObject ownerob)
         {
-
-            owner = ownerob;
-            patchHandler.LogPatch("interaction detected owner setted");
-            __instance.StartCoroutine(CastDarkBlast_HitDetectionRoutine(__instance));
+            try
+            {
+                owner = ownerob;
+                patchHandler.LogDebug("Owner set");
+                __instance.StartCoroutine(CastDarkBlast_HitDetectionRoutine(__instance));
+            }
+            catch (Exception ex)
+            {
+                patchHandler.LogError($"Patch error: {ex.Message}");
+            }
         }
 
 

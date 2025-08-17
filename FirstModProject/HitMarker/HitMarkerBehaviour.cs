@@ -1,11 +1,10 @@
-﻿using FirstModProject.HitMarker;
-using FirstModProject.Utils;
+﻿using HitMarkerMod.HitMarker;
+using HitMarkerMod.Utils;
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace FirstModProject
+namespace HitMarkerMod
 {
     public class HitMarkerBehaviour : MonoBehaviour
     {
@@ -14,60 +13,59 @@ namespace FirstModProject
         private HitMarkerData _hitMarkerData;
         private bool _isAnimating = false;
 
-     
         public void Initialize(HitMarkerData hitMarkerData, Sprite sprite)
         {
-            //qui c'è un problema (Problema)
-            /*
-             Info   :  FirstMod] [FirstMod] [RESOURCE] Created sprite from texture (420x420)
-[Info   :  FirstMod] [FirstMod] [HITMARKER] Initializing HitMarkerBehaviour
-[Error  :  FirstMod] [FirstMod] [HitMarkerManager] Failed to create hitmarker on canvas: Object reference not set to an instance of an object*/
-
-            //Guardando i log praticamente non arriva a 
-            // Mod.Log.LogInfo("Init: HitMarker inizializzato e disattivato.");
-            //quindi si interrompe qui 
             _hitMarkerData = hitMarkerData;
 
             LoggerUtils.LogHitmarker("Initializing HitMarkerBehaviour");
 
+            try
+            {
+                SetupImageComponent(sprite);
+                SetupRectTransform();
+                gameObject.SetActive(false);
 
-            SetupImageComponent(sprite);
-            SetupRectTransform();
-
-            
-
-            
-            this.gameObject.SetActive(false);
-
-            LoggerUtils.LogHitmarker("Initializing HitMarkerBehaviour Finish");
+                LoggerUtils.LogHitmarker("HitMarkerBehaviour initialized successfully");
+            }
+            catch (System.Exception ex)
+            {
+                LoggerUtils.LogCriticalError("HitMarkerBehaviour", "Failed to initialize", ex);
+                throw;
+            }
         }
+
         private void SetupImageComponent(Sprite sprite)
         {
-            LoggerUtils.LogHitmarker("Add Image componenet");
+            if (sprite == null)
+            {
+                LoggerUtils.LogError("HitMarkerBehaviour", "Cannot setup image with null sprite");
+                return;
+            }
+
+            LoggerUtils.LogDebug("HitMarkerBehaviour", "Setting up Image component");
+
             _hitmarkerImage = gameObject.AddComponent<Image>();
-            LoggerUtils.LogHitmarker("Added Image componenet");
-            LoggerUtils.LogHitmarker("Add Sprite");
             _hitmarkerImage.sprite = sprite;
-            LoggerUtils.LogHitmarker("Added Sprite");
-            LoggerUtils.LogHitmarker("Add Color");
             _hitmarkerImage.color = _hitMarkerData.Color;
-            LoggerUtils.LogHitmarker("Added Color");
         }
+
         private void SetupRectTransform()
         {
-            LoggerUtils.LogHitmarker("Initializing RectTrasnfrom");
-            LoggerUtils.LogHitmarker("Get RectTrasnfrom");
-            _rectTransform = this.gameObject.GetComponent<RectTransform>();
-            LoggerUtils.LogHitmarker("Getted RectTrasnfrom");
+            LoggerUtils.LogDebug("HitMarkerBehaviour", "Setting up RectTransform");
+
+            _rectTransform = GetComponent<RectTransform>();
+            if (_rectTransform == null)
+            {
+                LoggerUtils.LogError("HitMarkerBehaviour", "RectTransform not found");
+                return;
+            }
+
             _rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
             _rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
             _rectTransform.pivot = new Vector2(0.5f, 0.5f);
             _rectTransform.anchoredPosition = Vector2.zero;
             _rectTransform.sizeDelta = _hitMarkerData.Size;
-            LoggerUtils.LogHitmarker("Finish RectTrasnfrom");
         }
-
-
 
         public void ShowHitMark()
         {
@@ -77,7 +75,7 @@ namespace FirstModProject
                 return;
             }
 
-            LoggerUtils.LogHitmarker("ShowHitMark called, starting animation");
+            LoggerUtils.LogDebug("HitMarkerBehaviour", "Showing hitmarker");
 
             gameObject.SetActive(true);
 
@@ -90,29 +88,27 @@ namespace FirstModProject
             StartCoroutine(HitmarkerAnimationCoroutine());
         }
 
-
         private IEnumerator HitmarkerAnimationCoroutine()
         {
             _isAnimating = true;
-            LoggerUtils.LogHitmarker("Animation coroutine started");
 
-            
+           
             float timer = 0f;
             Color startColor = _hitMarkerData.Color;
             startColor.a = 1f;
             _hitmarkerImage.color = startColor;
             _rectTransform.localScale = new Vector3(_hitMarkerData.ScaleStart, _hitMarkerData.ScaleStart, 1f);
 
-          
+            
             while (timer < _hitMarkerData.Duration)
             {
                 float progress = timer / _hitMarkerData.Duration;
 
-                //Scale
+                // Scale animation
                 float currentScale = Mathf.Lerp(_hitMarkerData.ScaleStart, _hitMarkerData.ScaleEnd, progress);
                 _rectTransform.localScale = new Vector3(currentScale, currentScale, 1f);
 
-                //Fade
+                // Fade animation
                 Color currentColor = _hitmarkerImage.color;
                 currentColor.a = Mathf.Lerp(1f, 0f, progress);
                 _hitmarkerImage.color = currentColor;
@@ -121,7 +117,7 @@ namespace FirstModProject
                 yield return null;
             }
 
-           
+            
             _rectTransform.localScale = Vector3.one;
             Color finalColor = _hitmarkerImage.color;
             finalColor.a = 0f;
@@ -130,7 +126,7 @@ namespace FirstModProject
             gameObject.SetActive(false);
             _isAnimating = false;
 
-            LoggerUtils.LogHitmarker("Animation coroutine completed, GameObject deactivated");
+            LoggerUtils.LogDebug("HitMarkerBehaviour", "Animation completed");
         }
     }
 }

@@ -1,30 +1,19 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using HitMarkerMod.Patches;
 using UnityEngine;
-using static UnityEngine.GraphicsBuffer;
 
-namespace FirstModProject.Patches.WeaponPatches
+public class TorchHandler : BasePatchHandler
 {
-    public class TorchHandler : BasePatchHandler
-    {
-        public override string[] ValidTags => new[] { "Player", "PlayerNpc", "hitable", "wormhole", "brazier", "tutbrazier" };
-        public override string PatchName => "TorchPatch";
+    public override string[] ValidTags => new[] { "Player", "PlayerNpc", "hitable", "wormhole", "brazier", "tutbrazier" };
+    public override string PatchName => "Torch";
 
-        public override bool MoreCheckHit(GameObject target)
-        {
-            return target.name.Contains("duende");
-        }
-        public override bool ProcessHit(GameObject target, GameObject owner)
-        {
-            if (!IsLocalPlayerOwner(owner))
-            {
-                LogPatch("Weapon not owned by local player, skipping");
-                return false;
-            }
-            return base.ProcessHit(target, owner);
-        }
+    public override bool MoreCheckHit(GameObject target)
+    {
+        return target != null && target.name.Contains("duende");
+    }
+
+    public override bool ProcessHit(GameObject target, GameObject owner)
+    {
+        if (!IsLocalPlayerOwner(owner)) return false;
+        return base.ProcessHit(target, owner);
     }
 }

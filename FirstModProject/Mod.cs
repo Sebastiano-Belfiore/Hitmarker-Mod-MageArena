@@ -1,75 +1,70 @@
 ﻿using BepInEx;
-using BepInEx.Logging;
-using FirstModProject.Core;
-using FirstModProject.HitMarker;
-using FirstModProject.Utils;
-using FishNet.Object;
+using HitMarkerMod.Core;
+using HitMarkerMod.HitMarker;
+using HitMarkerMod.Utils;
 using HarmonyLib;
 using System;
 using System.Collections;
-using System.Collections.Generic;
-using System.IO;
-using System.Reflection;
 using UnityEngine;
-using UnityEngine.Diagnostics;
-using UnityEngine.UI;
 
 
-namespace FirstModProject
+
+namespace HitMarkerMod
 {
+    [BepInProcess("MageArena")]
     [BepInPlugin(ModConstants.MOD_GUID, ModConstants.MOD_NAME, ModConstants.MOD_VERSION)]
     public class Mod : BaseUnityPlugin
     {
-
         public static Mod Instance { get; private set; }
-
-
-
-        private const string modGUID = "First.Mod";
-        public static ManualLogSource Log;
 
         private Texture2D _defaultHitmarkerTexture;
         private HitMarkerManager _hitMarkerManager;
-        private WaitForSeconds _canvasWait;
 
-        public HitMarkerBehaviour hitMarkerBehaviour;
-
+      
         public HitMarkerManager HitMarkerManager => _hitMarkerManager;
         public Texture2D DefaultHitmarkerTexture => _defaultHitmarkerTexture;
 
-
-
         private void Awake()
         {
+            // Singleton pattern
             if (Instance == null)
             {
                 Instance = this;
                 DontDestroyOnLoad(gameObject);
+                Initialize();
             }
             else
             {
                 Destroy(gameObject);
-                return;
             }
-
-
-            LoggerUtils.Initialize(Logger);
-            LoggerUtils.LogInfo("Mod", " HITMARKER MOD STARTUP ");
-            LoggerUtils.LogInfo("Mod", $"Version: {ModConstants.MOD_VERSION}");
-
-            InitializeCore();
-
-            ApplyHarmonyPatches();
         }
-        private void OnDestroy()
+
+        private void Initialize()
         {
-            LoggerUtils.LogInfo("Mod", "Shutting down...");
+            
+            LoggerUtils.Initialize(Logger);
 
-            // Shutdown API
-            //HitMarkerAPI.Shutdown();
+           
+#if DEBUG
+            LoggerUtils.MinLogLevel = LogLevel.Debug;
+#else
+            LoggerUtils.MinLogLevel = LogLevel.Info;
+#endif
 
-            LoggerUtils.LogInfo("Mod", "Shutdown complete");
+            LoggerUtils.LogInfo("Mod", $"HITMARKER MOD STARTUP - Version: {ModConstants.MOD_VERSION}");
+
+            try
+            {
+                InitializeCore();
+                ApplyHarmonyPatches();
+                LoggerUtils.LogInfo("Mod", "Initialization completed successfully");
+            }
+            catch (Exception ex)
+            {
+                LoggerUtils.LogCriticalError("Mod", "Failed to initialize mod", ex);
+            }
         }
+
         private void InitializeCore()
         {
             LoggerUtils.LogInfo("Mod", "Initializing core components...");
@@ -78,69 +73,66 @@ namespace FirstModProject
             _defaultHitmarkerTexture = ResourceLoader.LoadTextureFromResources(ModConstants.HITMARKER_TEXTURE_PATH);
             if (_defaultHitmarkerTexture == null)
             {
-                LoggerUtils.LogError("Mod", "Failed to load hitmarker texture! Hitmarker functionality will be limited.");
-                return;
+                throw new Exception("Failed to load hitmarker texture - mod cannot function without it");
             }
 
-
+            // Crea HitMarker Manager
             GameObject managerObject = new GameObject("HitMarkerManager");
             DontDestroyOnLoad(managerObject);
             _hitMarkerManager = managerObject.AddComponent<HitMarkerManager>();
             _hitMarkerManager.Initialize(_defaultHitmarkerTexture);
 
-
-            _canvasWait = new WaitForSeconds(ModConstants.CANVAS_WAIT_TIME);
-
-            LoggerUtils.LogInfo("Mod", "Core components initialized");
+            LoggerUtils.LogDebug("Mod", "Core components initialized");
         }
+
         private void ApplyHarmonyPatches()
         {
-            LoggerUtils.LogInfo("Mod", "Applying Harmony patches for autonomous functionality...");
+            LoggerUtils.LogDebug("Mod", "Applying Harmony patches...");
 
             try
             {
                 Harmony harmony = new Harmony(ModConstants.MOD_GUID);
                 harmony.PatchAll();
-                LoggerUtils.LogInfo("Mod", "All Harmony patches applied successfully");
+                LoggerUtils.LogDebug("Mod", "Harmony patches applied successfully");
             }
             catch (Exception ex)
             {
-                LoggerUtils.LogError("Mod", $"Failed to apply Harmony patches: {ex.Message}");
+                LoggerUtils.LogCriticalError("Mod", "Failed to apply Harmony patches", ex);
             }
         }
+
         public void ShowHitmarkerInstance()
         {
-            if (_hitMarkerManager == null)
+            if (_hitMarkerManager == null || !_hitMarkerManager.IsInitialized)
             {
-                LoggerUtils.LogWarning("Mod", "Cannot show hitmarker: manager not initialized");
+                LoggerUtils.LogDebug("Mod", "Hitmarker not ready");
                 return;
             }
 
-            if (!_hitMarkerManager.IsInitialized)
+            try
             {
-                LoggerUtils.LogWarning("Mod", "Cannot show hitmarker: manager not ready");
-                return;
+                _hitMarkerManager.ShowHitmarker();
             }
-
-            _hitMarkerManager.ShowHitmarker();
+            catch (Exception ex)
+            {
+                LoggerUtils.LogError("Mod", $"Failed to show hitmarker: {ex.Message}");
+            }
         }
-
 
         public IEnumerator InitializeHitmarkerCoroutine(Texture2D texture)
         {
-            if (texture == null)
+            if (texture == null || _hitMarkerManager == null)
             {
-                LoggerUtils.LogError("Mod", "Cannot initialize hitmarker with null texture");
+                LoggerUtils.LogError("Mod", "Cannot initialize hitmarker: invalid parameters");
                 yield break;
             }
 
             LoggerUtils.LogInfo("Mod", "Starting hitmarker initialization...");
 
-
             _hitMarkerManager.InitializeHitmarker();
 
-
-            float timeout = 5f;
+            
+            float timeout = 10f;
             float elapsed = 0f;
 
             while (!_hitMarkerManager.IsInitialized && elapsed < timeout)
@@ -151,80 +143,17 @@ namespace FirstModProject
 
             if (_hitMarkerManager.IsInitialized)
             {
-                LoggerUtils.LogInfo("Mod", "Hitmarker initialization completed successfully");
-
-                // HitMarkerAPI.Initialize(_hitMarkerManager);
+                LoggerUtils.LogInfo("Mod", "Hitmarker system ready");
             }
             else
             {
-                LoggerUtils.LogError("Mod", "Hitmarker initialization timed out");
+                LoggerUtils.LogError("Mod", "Hitmarker initialization timeout");
             }
+        }
+
+        private void OnDestroy()
+        {
+            LoggerUtils.LogInfo("Mod", "Mod shutting down");
         }
     }
 }
-
-      
-
-       
-
-
-      /*  [HarmonyPatch(typeof(WispController), "Update")]
-        public static class WispControllerPatch
-        {
-            static void Postfix(WispController __instance)
-            {
-                Mod.Log.LogInfo("[WispControllerPatch] Postfix avviato.");
-                try
-                {
-                    // Accesso ai campi privati tramite Reflection
-                    FieldInfo initedField = typeof(WispController).GetField("inited", BindingFlags.NonPublic | BindingFlags.Instance);
-                    FieldInfo targetField = typeof(WispController).GetField("target", BindingFlags.NonPublic | BindingFlags.Instance);
-                    FieldInfo ownerField = typeof(WispController).GetField("ownerob", BindingFlags.NonPublic | BindingFlags.Instance);
-
-                    if (initedField == null || targetField == null || ownerField == null)
-                    {
-                        Mod.Log.LogWarning("[WispControllerPatch] Uno o più campi privati (inited, target, ownerob) in WispController non trovati tramite reflection.");
-                        return;
-                    }
-
-                    bool inited = (bool)initedField.GetValue(__instance);
-                    Transform target = (Transform)targetField.GetValue(__instance);
-
-                    if (inited && target != null)
-                    {
-                        Mod.Log.LogInfo("[WispControllerPatch] Wisp è inizializzato e ha un bersaglio.");
-                        if (Vector3.Distance(__instance.transform.position, target.position) < 1f)
-                        {
-                            Mod.Log.LogInfo("[WispControllerPatch] Wisp ha raggiunto il bersaglio. Verifico il proprietario.");
-                            GameObject owner = (GameObject)ownerField.GetValue(__instance);
-                            if (owner != null)
-                            {
-                                NetworkObject ownerNetworkObject = owner.GetComponent<NetworkObject>();
-                                if (ownerNetworkObject != null && ownerNetworkObject.IsOwner)
-                                {
-                                    Mod.Log.LogInfo($"[WispControllerPatch] Sono il proprietario del Wisp. Colpo rilevato su '{target.name}'. Chiamo ShowHitmarkerInstance.");
-                                    Mod.Instance.ShowHitmarkerInstance();
-                                }
-                                else
-                                {
-                                    Mod.Log.LogInfo("[WispControllerPatch] Il Wisp ha colpito un bersaglio, ma il proprietario non sono io.");
-                                }
-                            }
-                            else
-                            {
-                                Mod.Log.LogInfo("[WispControllerPatch] Il proprietario del Wisp è null.");
-                            }
-                        }
-                    }
-                    else
-                    {
-                        Mod.Log.LogInfo("[WispControllerPatch] Wisp non inizializzato o senza bersaglio.");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Mod.Log.LogError($"[WispControllerPatch] Errore nella patch: {ex.Message}");
-                }
-            }
-        } */
-          

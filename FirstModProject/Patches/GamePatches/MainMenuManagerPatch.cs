@@ -1,33 +1,30 @@
-﻿using FirstModProject.Utils;
+﻿using HitMarkerMod.Utils;
 using HarmonyLib;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace FirstModProject.Patches.GamePatches
+namespace HitMarkerMod.Patches.GamePatches
 {
     [HarmonyPatch(typeof(MainMenuManager), "ActuallyStartGameActually")]
     public static class MainMenuManagerPatch
     {
         static void Postfix()
-       
         {
-            LoggerUtils.LogPatch("MainMenuManager", "Game started, initializing hitmarker system");
-            if (Mod.Instance == null)
-            {
-                LoggerUtils.LogError("MainMenuManagerPatch", "Mod instance is null");
-                return;
-            }
-            if (Mod.Instance.DefaultHitmarkerTexture == null)
-            {
-                LoggerUtils.LogError("MainMenuManagerPatch", "Default hitmarker texture is null");
-                return;
-            }
-            Mod.Instance.StartCoroutine(Mod.Instance.InitializeHitmarkerCoroutine(Mod.Instance.DefaultHitmarkerTexture));
+            LoggerUtils.LogInfo("MainMenuManager", "Game started, initializing hitmarker system");
 
-            LoggerUtils.LogPatch("MainMenuManager", "Hitmarker initialization coroutine started");
+            if (Mod.Instance?.DefaultHitmarkerTexture == null)
+            {
+                LoggerUtils.LogError("MainMenuManagerPatch", "Cannot initialize: missing mod instance or texture");
+                return;
+            }
+
+            try
+            {
+                Mod.Instance.StartCoroutine(Mod.Instance.InitializeHitmarkerCoroutine(Mod.Instance.DefaultHitmarkerTexture));
+                LoggerUtils.LogInfo("MainMenuManager", "Hitmarker initialization started");
+            }
+            catch (System.Exception ex)
+            {
+                LoggerUtils.LogCriticalError("MainMenuManagerPatch", "Failed to start hitmarker initialization", ex);
+            }
         }
     }
 }

@@ -1,57 +1,37 @@
-﻿using FirstModProject.Utils;
-using FishNet.Object;
+﻿using HitMarkerMod.Utils;
 using HarmonyLib;
 using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using UnityEngine;
 
-namespace FirstModProject.Patches.WeaponPatches
+public static class Swords_Patches
 {
-    public static class Swords_Patches
+    private static GameObject owner;
+    private static MushroomSwordHandler patchHandler = new MushroomSwordHandler();
+
+    [HarmonyPatch(typeof(MushroomSword), "Interaction")]
+    [HarmonyPrefix]
+    public static void OnInteraction_Prefix(MushroomSword __instance, GameObject player)
     {
-        public static GameObject owner;
-        private static MushroomSwordHandler patchHandler = new MushroomSwordHandler();
+        owner = player;
+        patchHandler.LogDebug("Owner set");
+    }
 
-        public static readonly HashSet<int> processedInstanceIDs = new HashSet<int>();
-
-        [HarmonyPatch(typeof(MushroomSword), "Interaction")]
-        [HarmonyPrefix]
-        public static void OnInteraction_Prefix(MushroomSword __instance, GameObject player)
+    [HarmonyPatch(typeof(WeaponHitDetection), "OnTriggerEnter")]
+    [HarmonyPostfix]
+    public static void OnTriggerEnter_Postfix(WeaponHitDetection __instance, Collider other)
+    {
+        try
         {
-            
-            owner = player;
-            patchHandler.LogPatch("interaction detected owner setted");
+            if (!Input.GetKey(KeyCode.Mouse0)) return;
+
+            if (__instance.swerd != null && __instance.swerd is MushroomSword)
+            {
+                patchHandler.ProcessHit(__instance.swerd.HitSubject, owner);
+            }
         }
-
-        [HarmonyPatch(typeof(WeaponHitDetection), "OnTriggerEnter")]
-        [HarmonyPostfix]
-        public static void OnTriggerEnter_Postfix(WeaponHitDetection __instance, Collider other)
+        catch (Exception ex)
         {
-            patchHandler.LogPatch("trigger detected");
-            try
-            {
-
-                if (!Input.GetKey(KeyCode.Mouse0))
-                {
-                    // patchHandler.LogPatch("GetKey(KeyCode.Mouse0) not triggered");
-                    return;
-                }
-                //patchHandler.LogPatch("GetKey(KeyCode.Mouse0) triggered");
-                
-                if(__instance.swerd && __instance.swerd is MushroomSword)
-                {
-                    patchHandler.ProcessHit(__instance.swerd.HitSubject, owner);
-                }
-            }
-            catch (Exception ex)
-            {
-                patchHandler.LogError($"Error in patch: {ex.Message}");
-            }
+            patchHandler.LogError($"Patch error: {ex.Message}");
         }
     }
 }
-

@@ -1,6 +1,5 @@
-﻿using FirstModProject.Patches.SpellPatches.Rock;
-using FirstModProject.Patches.WeaponPatches;
-using FirstModProject.Utils;
+﻿
+using HitMarkerMod.Utils;
 using FishNet.Object;
 using HarmonyLib;
 using System;
@@ -11,8 +10,9 @@ using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
 
-namespace FirstModProject.Patches.SpellPatches
+namespace HitMarkerMod.Patches.SpellPatches
 {
+    [HarmonyPatch]
     public static class Fireball_Patches
     {
         private static FireballHandler patchHandler = new FireballHandler();
@@ -21,22 +21,21 @@ namespace FirstModProject.Patches.SpellPatches
         [HarmonyPostfix]
         static void Explode_Postfix(ExplosionController __instance, GameObject owner)
         {
-            patchHandler.LogPatch(" checking for hits");
             try
             {
-                if (!patchHandler.IsLocalPlayerOwner(owner))
-                {
-                    return;
-                }
+                if (!patchHandler.IsLocalPlayerOwner(owner)) return;
+
                 float sphereRadius = 8f + (float)__instance.level * 0.4f;
-                foreach (Collider collider in Physics.OverlapSphere(__instance.transform.position, sphereRadius, __instance.PlayerLayer))
+                Collider[] colliders = Physics.OverlapSphere(__instance.transform.position, sphereRadius, __instance.PlayerLayer);
+
+                foreach (Collider collider in colliders)
                 {
                     patchHandler.ProcessHit(collider.gameObject, owner);
                 }
             }
             catch (Exception ex)
             {
-                patchHandler.LogError($"Error in patch: {ex.Message}");
+                patchHandler.LogError($"Patch error: {ex.Message}");
             }
         }
 
